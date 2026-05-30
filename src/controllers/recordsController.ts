@@ -2,18 +2,33 @@ import { Response } from 'express';
 import Appointment from '../models/Appointment';
 import PatientProfile from '../models/PatientProfile';
 import { AuthRequest } from '../middleware/auth';
+import DoctorProfile from '../models/DoctorProfile';
 
 // GET /api/records/my — patient views own medical records
 export const getMyRecords = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const records = await Appointment.find({
+    const appointments = await Appointment.find({
       patientId: req.user?.id,
       status: 'completed',
     })
-      .populate('doctorId', 'name specialization photo')
-      .sort({ scheduledAt: -1 });
+      .sort({ scheduledAt: -1 })
+      .lean();
 
-    res.json(records);
+    const doctorIds = [...new Set(appointments.map((a: any) => a.doctorId?.toString()).filter(Boolean))];
+    const profiles = await DoctorProfile.find({ userId: { $in: doctorIds } }).lean();
+    const profileMap: Record<string, any> = {};
+    profiles.forEach(p => { profileMap[p.userId.toString()] = p; });
+
+    const enriched = appointments.map((apt: any) => ({
+      ...apt,
+      doctorId: apt.doctorId ? {
+        _id: apt.doctorId,
+        name: profileMap[apt.doctorId.toString()]?.name || 'Doctor',
+        specialization: profileMap[apt.doctorId.toString()]?.specialization || '',
+      } : null,
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
   }

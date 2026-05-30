@@ -215,3 +215,32 @@ export const markNotificationRead = async (req: AuthRequest, res: Response): Pro
     res.status(500).json({ message: 'Server error', error: err });
   }
 };
+
+
+// PATCH /api/appointments/:id/cancel — patient cancels own appointment
+export const cancelMyAppointment = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const appointment = await Appointment.findOneAndUpdate(
+      { _id: req.params.id, patientId: req.user?.id }, // Security: Must own the appointment
+      { status: 'cancelled' },
+      { new: true }
+    );
+
+    if (!appointment) {
+      res.status(404).json({ message: 'Appointment not found or unauthorized' });
+      return;
+    }
+
+    // Notify the doctor
+    await notify(
+      appointment.doctorId.toString(),
+      `An appointment was cancelled by the patient.`,
+      'cancellation',
+      appointment._id
+    );
+
+    res.json(appointment);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err });
+  }
+};
