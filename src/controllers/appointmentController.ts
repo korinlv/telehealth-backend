@@ -47,10 +47,25 @@ export const createAppointment = async (req: AuthRequest, res: Response): Promis
 export const getPatientAppointments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const appointments = await Appointment.find({ patientId: req.user?.id })
-      .populate('doctorId', 'name specialization photo')
       .sort({ scheduledAt: -1 });
 
-    res.json(appointments);
+    // Fetch doctor profiles for each appointment
+    const DoctorProfile = (await import('../models/DoctorProfile')).default;
+    const enriched = await Promise.all(appointments.map(async (apt) => {
+      const aptObj = apt.toObject() as any;
+      if (apt.doctorId) {
+        const profile = await DoctorProfile.findOne({ userId: apt.doctorId });
+        aptObj.doctorId = {
+          _id: apt.doctorId,
+          name: profile?.name || 'Doctor',
+          specialization: profile?.specialization || '',
+          photo: profile?.photo || '',
+        };
+      }
+      return aptObj;
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
   }
@@ -60,10 +75,23 @@ export const getPatientAppointments = async (req: AuthRequest, res: Response): P
 export const getDoctorAppointments = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const appointments = await Appointment.find({ doctorId: req.user?.id })
-      .populate('patientId', 'name photo')
       .sort({ scheduledAt: 1 });
 
-    res.json(appointments);
+    const PatientProfile = (await import('../models/PatientProfile')).default;
+    const enriched = await Promise.all(appointments.map(async (apt) => {
+      const aptObj = apt.toObject() as any;
+      if (apt.patientId) {
+        const profile = await PatientProfile.findOne({ userId: apt.patientId });
+        aptObj.patientId = {
+          _id: apt.patientId,
+          name: profile?.name || 'Patient',
+          photo: profile?.photo || '',
+        };
+      }
+      return aptObj;
+    }));
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
   }
