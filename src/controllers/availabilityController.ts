@@ -42,16 +42,15 @@ export const setAvailability = async (req: AuthRequest, res: Response): Promise<
 };
 
 // PATCH /api/availability/block — doctor blocks specific dates
+// PATCH /api/availability/block — doctor blocks specific dates
 export const blockDates = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { dates } = req.body; // array of date strings
-
+    const { dates } = req.body; 
     const availability = await Availability.findOneAndUpdate(
       { doctorId: req.user?.id },
-      { $push: { blockedDates: { $each: dates.map((d: string) => new Date(d)) } } },
-      { new: true }
+      { $addToSet: { blockedDates: { $each: dates } } }, // Prevents duplicate dates
+      { new: true, upsert: true }
     );
-
     res.json(availability);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });

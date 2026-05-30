@@ -46,7 +46,8 @@ export const getPatientRecords = async (req: AuthRequest, res: Response): Promis
 
     const profile = await PatientProfile.findOne({ userId: req.params.patientId });
 
-    res.json({ profile, records });
+    // This returns the history format your frontend PatientHistoryModal is expecting
+    res.json(records); 
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
   }
@@ -77,6 +78,37 @@ export const addConsultationNotes = async (req: AuthRequest, res: Response): Pro
     }
 
     res.json(appointment);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err });
+  }
+};
+
+// GET /api/records/search?q=xyz — doctor searches their own patients
+export const searchMyPatients = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { q } = req.query;
+    if (!q || typeof q !== 'string') {
+      res.json([]);
+      return;
+    }
+
+    // Find all appointments for this doctor and populate patient info IF the name matches
+    const appointments = await Appointment.find({ doctorId: req.user?.id })
+      .populate({
+        path: 'patientId',
+        select: 'name email _id',
+        match: { name: { $regex: q, $options: 'i' } } // Case-insensitive search
+      });
+
+    // Filter out empty matches and ensure uniqueness
+    const uniquePatients = new Map();
+    appointments.forEach((apt: any) => {
+      if (apt.patientId) {
+        uniquePatients.set(apt.patientId._id.toString(), apt.patientId);
+      }
+    });
+
+    res.json(Array.from(uniquePatients.values()));
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err });
   }

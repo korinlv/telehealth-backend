@@ -10,3 +10,4 @@ router.patch('/block',       requireAuth, requireRole('doctor'), blockDates);
 router.patch('/unblock',     requireAuth, requireRole('doctor'), unblockDate);
 
 export default router;
+
