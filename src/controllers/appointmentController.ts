@@ -2,6 +2,8 @@ import { Response } from 'express';
 import Appointment from '../models/Appointment';
 import Notification from '../models/Notification';
 import { AuthRequest } from '../middleware/auth';
+import DoctorProfile from '../models/DoctorProfile';
+import PatientProfile from '../models/PatientProfile';
 
 // Helper — creates a notification for a user
 const notify = async (userId: string, message: string, type: any, appointmentId: any) => {
@@ -49,8 +51,6 @@ export const getPatientAppointments = async (req: AuthRequest, res: Response): P
     const appointments = await Appointment.find({ patientId: req.user?.id })
       .sort({ scheduledAt: -1 });
 
-    // Fetch doctor profiles for each appointment
-    const DoctorProfile = (await import('../models/DoctorProfile')).default;
     const enriched = await Promise.all(appointments.map(async (apt) => {
       const aptObj = apt.toObject() as any;
       if (apt.doctorId) {
@@ -77,7 +77,6 @@ export const getDoctorAppointments = async (req: AuthRequest, res: Response): Pr
     const appointments = await Appointment.find({ doctorId: req.user?.id })
       .sort({ scheduledAt: 1 });
 
-    const PatientProfile = (await import('../models/PatientProfile')).default;
     const enriched = await Promise.all(appointments.map(async (apt) => {
       const aptObj = apt.toObject() as any;
       if (apt.patientId) {
@@ -96,6 +95,8 @@ export const getDoctorAppointments = async (req: AuthRequest, res: Response): Pr
     res.status(500).json({ message: 'Server error', error: err });
   }
 };
+
+
 
 // GET /api/appointments/:id — single appointment detail
 export const getAppointmentById = async (req: AuthRequest, res: Response): Promise<void> => {
