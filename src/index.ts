@@ -30,7 +30,7 @@ const app = express();
 
 // 4. Register global middleware
 app.use(cors({
-  origin: ['https://telehealth-front-end.vercel.app/'], // Must match exactly
+  origin: ['https://telehealth-front-end.vercel.app'], // Must match exactly
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Include OPTIONS
   credentials: true
 }));
